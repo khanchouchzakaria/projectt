@@ -1,30 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>FreshChain – Food Traceability</title>
+<meta charset="UTF-8">
+<title>FreshChain – Food Traceability</title>
 
-  <!-- Ethers v5 -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<!-- Ethers v5 -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; background:#f3f4f6; padding:20px; }
-    h1 { text-align:center; }
-    .box { background:#fff; padding:15px; margin:15px auto; max-width:600px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.1); }
-    input, select, button { width:100%; padding:10px; margin-top:8px; }
-    button { background:#111827; color:#fff; border:none; cursor:pointer; }
-    button:hover { opacity:.9; }
-    .hidden { display:none; }
-    pre { background:#111827; color:#e5e7eb; padding:10px; overflow:auto; }
-    .status { background:#e5e7eb; padding:8px; margin-top:8px; white-space:pre-wrap; }
-  </style>
+<style>
+body { font-family: Arial, sans-serif; background:#f3f4f6; padding:20px; }
+h1 { text-align:center; }
+.card {
+  background:#fff;
+  max-width:600px;
+  margin:15px auto;
+  padding:15px;
+  border-radius:8px;
+  box-shadow:0 4px 10px rgba(0,0,0,.1);
+}
+input, select, button {
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+}
+button {
+  background:#111827;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+}
+.hidden { display:none; }
+.status {
+  background:#e5e7eb;
+  padding:8px;
+  margin-top:8px;
+  white-space:pre-wrap;
+}
+pre {
+  background:#111827;
+  color:#e5e7eb;
+  padding:10px;
+  overflow:auto;
+}
+</style>
 </head>
 
 <body>
 
 <h1>🥬 FreshChain – Blockchain Food Traceability</h1>
 
-<div class="box">
+<div class="card">
   <button onclick="connectWallet()">🔗 Connect MetaMask</button>
   <div class="status" id="walletStatus">Not connected</div>
 
@@ -39,8 +64,7 @@
   </select>
 </div>
 
-<!-- ADMIN -->
-<div class="box hidden" id="admin">
+<div class="card hidden" id="admin">
   <h3>Admin – Register Actor</h3>
   <input id="adminAddr" placeholder="Actor address">
   <select id="adminType">
@@ -53,8 +77,7 @@
   <div class="status" id="adminStatus"></div>
 </div>
 
-<!-- PRODUCER -->
-<div class="box hidden" id="producer">
+<div class="card hidden" id="producer">
   <h3>Producer – Create Batch</h3>
   <input id="pbId" placeholder="Batch ID">
   <input id="pbName" placeholder="Product Name">
@@ -63,8 +86,7 @@
   <div class="status" id="producerStatus"></div>
 </div>
 
-<!-- TRANSPORTER -->
-<div class="box hidden" id="transporter">
+<div class="card hidden" id="transporter">
   <h3>Transporter – Add Sensor Data</h3>
   <input id="tbId" placeholder="Batch ID">
   <input id="tbTemp" placeholder="Temperature (-10 to 40)">
@@ -74,8 +96,7 @@
   <div class="status" id="transporterStatus"></div>
 </div>
 
-<!-- DISTRIBUTOR -->
-<div class="box hidden" id="distributor">
+<div class="card hidden" id="distributor">
   <h3>Transfer Ownership</h3>
   <input id="obId" placeholder="Batch ID">
   <input id="obNew" placeholder="New Owner Address">
@@ -83,8 +104,7 @@
   <div class="status" id="distributorStatus"></div>
 </div>
 
-<!-- RETAILER -->
-<div class="box hidden" id="retailer">
+<div class="card hidden" id="retailer">
   <h3>Retailer – Final Inspection</h3>
   <input id="rbId" placeholder="Batch ID">
   <select id="rbPass">
@@ -95,8 +115,7 @@
   <div class="status" id="retailerStatus"></div>
 </div>
 
-<!-- CUSTOMER -->
-<div class="box hidden" id="customer">
+<div class="card hidden" id="customer">
   <h3>Customer – View Batch History</h3>
   <input id="cbId" placeholder="Batch ID">
   <button onclick="getHistory()">View History</button>
@@ -104,95 +123,100 @@
 </div>
 
 <script>
-/* ---------------- CONFIG ---------------- */
+/* ================= CONFIG ================= */
 
 const CONTRACT_ADDRESS = "0x6b9b534daD5Fa5cFDba20E30D6a1ae7040b8c6b9";
 
-const ABI = [ /* ABI EXACTLY AS YOU PROVIDED */ 
-/* (ABI OMITTED HERE FOR BREVITY IN THIS VIEW – USE THE SAME ABI YOU SENT ME) */
-];
+const ABI = [/* FULL ABI EXACTLY AS YOU PROVIDED — PASTE IT HERE AGAIN */];
 
-/* ---------------- GLOBALS ---------------- */
+/* ================= GLOBALS ================= */
 
-let provider, signer, contract;
+let provider;
+let signer;
+let contract;
 
-/* ---------------- WALLET ---------------- */
+/* ================= CONNECT ================= */
 
-async function connectWallet(){
-  if(!window.ethereum){
-    alert("MetaMask required");
-    return;
+async function connectWallet() {
+  try {
+    if (typeof window.ethereum === "undefined") {
+      alert("MetaMask is not installed");
+      return;
+    }
+
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts"
+    });
+
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+
+    const network = await provider.getNetwork();
+    if (network.chainId !== 11155111) {
+      alert("Please switch MetaMask to Sepolia");
+      return;
+    }
+
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    document.getElementById("walletStatus").innerText =
+      "Connected ✅\n" + accounts[0] + "\nNetwork: Sepolia";
+
+  } catch (err) {
+    console.error(err);
+    alert("Connection failed: " + err.message);
   }
-
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-
-  const net = await provider.getNetwork();
-  if(net.chainId !== 11155111){
-    alert("Please switch MetaMask to Sepolia");
-    return;
-  }
-
-  contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-  document.getElementById("walletStatus").innerText =
-    "Connected: " + await signer.getAddress();
 }
 
-/* ---------------- UI ---------------- */
+/* ================= UI ================= */
 
-function showRole(){
+function showRole() {
   ["admin","producer","transporter","distributor","retailer","customer"]
-    .forEach(id => document.getElementById(id).classList.add("hidden"));
+    .forEach(r => document.getElementById(r).classList.add("hidden"));
 
-  const r = document.getElementById("role").value;
-  if(r) document.getElementById(r).classList.remove("hidden");
+  const role = document.getElementById("role").value;
+  if (role) document.getElementById(role).classList.remove("hidden");
 }
 
-/* ---------------- ADMIN ---------------- */
+/* ================= ADMIN ================= */
 
-async function registerActor(){
-  try{
+async function registerActor() {
+  try {
+    let tx;
     const addr = adminAddr.value;
     const type = adminType.value;
 
-    let tx;
-    if(type==="producer") tx = await contract.registerProducer(addr);
-    if(type==="transporter") tx = await contract.registerTransporter(addr);
-    if(type==="distributor") tx = await contract.registerDistributor(addr);
-    if(type==="retailer") tx = await contract.registerRetailer(addr);
+    if (type === "producer") tx = await contract.registerProducer(addr);
+    if (type === "transporter") tx = await contract.registerTransporter(addr);
+    if (type === "distributor") tx = await contract.registerDistributor(addr);
+    if (type === "retailer") tx = await contract.registerRetailer(addr);
 
-    adminStatus.innerText = "Tx sent: " + tx.hash;
+    adminStatus.innerText = "Tx: " + tx.hash;
     await tx.wait();
     adminStatus.innerText = "Registered successfully";
 
-  }catch(e){
+  } catch (e) {
     adminStatus.innerText = e.reason || e.message;
   }
 }
 
-/* ---------------- PRODUCER ---------------- */
+/* ================= PRODUCER ================= */
 
-async function createBatch(){
-  try{
-    const tx = await contract.createBatch(
-      pbId.value,
-      pbName.value,
-      pbQty.value
-    );
+async function createBatch() {
+  try {
+    const tx = await contract.createBatch(pbId.value, pbName.value, pbQty.value);
     producerStatus.innerText = "Tx: " + tx.hash;
     await tx.wait();
     producerStatus.innerText = "Batch created";
-
-  }catch(e){
+  } catch (e) {
     producerStatus.innerText = e.reason || e.message;
   }
 }
 
-/* ---------------- TRANSPORTER ---------------- */
+/* ================= TRANSPORTER ================= */
 
-async function addSensor(){
-  try{
+async function addSensor() {
+  try {
     const tx = await contract.addSensorData(
       tbId.value,
       parseInt(tbTemp.value),
@@ -202,53 +226,44 @@ async function addSensor(){
     transporterStatus.innerText = "Tx: " + tx.hash;
     await tx.wait();
     transporterStatus.innerText = "Sensor added";
-
-  }catch(e){
+  } catch (e) {
     transporterStatus.innerText = e.reason || e.message;
   }
 }
 
-/* ---------------- TRANSFER ---------------- */
+/* ================= TRANSFER ================= */
 
-async function transferOwnership(){
-  try{
-    const tx = await contract.transferOwnership(
-      obId.value,
-      obNew.value
-    );
+async function transferOwnership() {
+  try {
+    const tx = await contract.transferOwnership(obId.value, obNew.value);
     distributorStatus.innerText = "Tx: " + tx.hash;
     await tx.wait();
     distributorStatus.innerText = "Ownership transferred";
-
-  }catch(e){
+  } catch (e) {
     distributorStatus.innerText = e.reason || e.message;
   }
 }
 
-/* ---------------- RETAILER ---------------- */
+/* ================= RETAILER ================= */
 
-async function markArrived(){
-  try{
-    const tx = await contract.markAsArrived(
-      rbId.value,
-      rbPass.value === "true"
-    );
+async function markArrived() {
+  try {
+    const tx = await contract.markAsArrived(rbId.value, rbPass.value === "true");
     retailerStatus.innerText = "Tx: " + tx.hash;
     await tx.wait();
     retailerStatus.innerText = "Arrival recorded";
-
-  }catch(e){
+  } catch (e) {
     retailerStatus.innerText = e.reason || e.message;
   }
 }
 
-/* ---------------- CUSTOMER ---------------- */
+/* ================= CUSTOMER ================= */
 
-async function getHistory(){
-  try{
-    const b = await contract.getBatchHistory(cbId.value);
-    history.innerText = JSON.stringify(b, null, 2);
-  }catch(e){
+async function getHistory() {
+  try {
+    const data = await contract.getBatchHistory(cbId.value);
+    history.innerText = JSON.stringify(data, null, 2);
+  } catch (e) {
     history.innerText = e.reason || e.message;
   }
 }
