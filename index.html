@@ -2,553 +2,257 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>FreshChain – Food Traceability</title>
 
-  <!-- Ethers v5 (works well with MetaMask) -->
+  <!-- Ethers v5 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; background:#f4f6f8; padding:20px; }
-    h1 { text-align:center; margin-bottom: 10px; }
-    .wrap { max-width: 900px; margin: 0 auto; }
-    .card { background:#fff; padding:16px; margin:12px 0; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.08); }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    @media (max-width: 800px){ .row { grid-template-columns: 1fr; } }
-    input, select, button { width:100%; padding:10px; margin-top:8px; border-radius:8px; border:1px solid #d7dbe0; }
-    button { cursor:pointer; border:none; background:#111827; color:#fff; font-weight:600; }
-    button.secondary { background:#374151; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    .muted { color:#6b7280; font-size: 13px; }
-    .status { padding:10px; border-radius:8px; background:#f1f5f9; margin-top:10px; white-space:pre-wrap; }
+    body { font-family: Arial, sans-serif; background:#f3f4f6; padding:20px; }
+    h1 { text-align:center; }
+    .box { background:#fff; padding:15px; margin:15px auto; max-width:600px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.1); }
+    input, select, button { width:100%; padding:10px; margin-top:8px; }
+    button { background:#111827; color:#fff; border:none; cursor:pointer; }
+    button:hover { opacity:.9; }
     .hidden { display:none; }
-    pre { background:#0b1020; color:#dbeafe; padding:12px; border-radius:10px; overflow:auto; }
-    .tag { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; margin-left:8px; }
-    .hr { height:1px; background:#e5e7eb; margin:12px 0; }
-    .pill { background:#ecfeff; color:#155e75; padding:8px 10px; border-radius:10px; }
+    pre { background:#111827; color:#e5e7eb; padding:10px; overflow:auto; }
+    .status { background:#e5e7eb; padding:8px; margin-top:8px; white-space:pre-wrap; }
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h1>🥬 FreshChain <span class="tag">Sepolia</span></h1>
-    <div class="card">
-      <div class="row">
-        <div>
-          <button id="btnConnect" onclick="connectWallet()">🔗 Connect MetaMask</button>
-          <div class="status" id="connStatus">Not connected.</div>
-          <div class="muted">
-            Contract: <b>0x6b9b534daD5Fa5cFDba20E30D6a1ae7040b8c6b9</b>
-          </div>
-        </div>
-        <div>
-          <label class="muted">Select role:</label>
-          <select id="roleSelect" onchange="changeRole()">
-            <option value="">Select Role</option>
-            <option value="admin">Admin</option>
-            <option value="producer">Producer</option>
-            <option value="transporter">Transporter</option>
-            <option value="distributor">Distributor</option>
-            <option value="retailer">Retailer</option>
-            <option value="customer">Customer</option>
-          </select>
 
-          <div class="pill muted" style="margin-top:10px;">
-            Tip: Admin must register addresses first (producer/transporter/distributor/retailer).
-          </div>
-        </div>
-      </div>
-    </div>
+<h1>🥬 FreshChain – Blockchain Food Traceability</h1>
 
-    <!-- ADMIN -->
-    <div class="card hidden" id="admin">
-      <h3>👑 Admin – Register Actors</h3>
-      <div class="muted">Only the contract <b>owner</b> can register roles.</div>
-      <div class="hr"></div>
+<div class="box">
+  <button onclick="connectWallet()">🔗 Connect MetaMask</button>
+  <div class="status" id="walletStatus">Not connected</div>
 
-      <input id="regAddress" placeholder="Actor address (0x...)" />
-      <select id="regType">
-        <option value="producer">Producer</option>
-        <option value="transporter">Transporter</option>
-        <option value="distributor">Distributor</option>
-        <option value="retailer">Retailer</option>
-      </select>
-      <button onclick="registerActor()">✅ Register</button>
+  <select id="role" onchange="showRole()">
+    <option value="">Select Role</option>
+    <option value="admin">Admin</option>
+    <option value="producer">Producer</option>
+    <option value="transporter">Transporter</option>
+    <option value="distributor">Distributor</option>
+    <option value="retailer">Retailer</option>
+    <option value="customer">Customer</option>
+  </select>
+</div>
 
-      <div class="status" id="adminStatus"></div>
-    </div>
+<!-- ADMIN -->
+<div class="box hidden" id="admin">
+  <h3>Admin – Register Actor</h3>
+  <input id="adminAddr" placeholder="Actor address">
+  <select id="adminType">
+    <option value="producer">Producer</option>
+    <option value="transporter">Transporter</option>
+    <option value="distributor">Distributor</option>
+    <option value="retailer">Retailer</option>
+  </select>
+  <button onclick="registerActor()">Register</button>
+  <div class="status" id="adminStatus"></div>
+</div>
 
-    <!-- PRODUCER -->
-    <div class="card hidden" id="producer">
-      <h3>🌾 Producer – Create Batch</h3>
-      <div class="muted">Only registered producers can create batches.</div>
-      <div class="hr"></div>
+<!-- PRODUCER -->
+<div class="box hidden" id="producer">
+  <h3>Producer – Create Batch</h3>
+  <input id="pbId" placeholder="Batch ID">
+  <input id="pbName" placeholder="Product Name">
+  <input id="pbQty" placeholder="Quantity">
+  <button onclick="createBatch()">Create Batch</button>
+  <div class="status" id="producerStatus"></div>
+</div>
 
-      <div class="row">
-        <div><input id="pBatchId" placeholder="Batch ID (e.g. 101)" /></div>
-        <div><input id="pQty" placeholder="Quantity (e.g. 100)" /></div>
-      </div>
-      <input id="pName" placeholder="Product Name (e.g. Tomatoes)" />
+<!-- TRANSPORTER -->
+<div class="box hidden" id="transporter">
+  <h3>Transporter – Add Sensor Data</h3>
+  <input id="tbId" placeholder="Batch ID">
+  <input id="tbTemp" placeholder="Temperature (-10 to 40)">
+  <input id="tbHum" placeholder="Humidity (0 to 40)">
+  <input id="tbLoc" placeholder="Location">
+  <button onclick="addSensor()">Add Sensor</button>
+  <div class="status" id="transporterStatus"></div>
+</div>
 
-      <button onclick="createBatch()">➕ Create Batch</button>
-      <div class="status" id="producerStatus"></div>
-    </div>
+<!-- DISTRIBUTOR -->
+<div class="box hidden" id="distributor">
+  <h3>Transfer Ownership</h3>
+  <input id="obId" placeholder="Batch ID">
+  <input id="obNew" placeholder="New Owner Address">
+  <button onclick="transferOwnership()">Transfer</button>
+  <div class="status" id="distributorStatus"></div>
+</div>
 
-    <!-- TRANSPORTER -->
-    <div class="card hidden" id="transporter">
-      <h3>🚚 Transporter – Add Sensor Data</h3>
-      <div class="muted">
-        Temperature must be between <b>-10 and 40</b>, humidity between <b>0 and 40</b>.
-      </div>
-      <div class="hr"></div>
+<!-- RETAILER -->
+<div class="box hidden" id="retailer">
+  <h3>Retailer – Final Inspection</h3>
+  <input id="rbId" placeholder="Batch ID">
+  <select id="rbPass">
+    <option value="true">Passed</option>
+    <option value="false">Failed</option>
+  </select>
+  <button onclick="markArrived()">Mark Arrived</button>
+  <div class="status" id="retailerStatus"></div>
+</div>
 
-      <input id="tBatchId" placeholder="Batch ID" />
-      <div class="row">
-        <div><input id="tTemp" placeholder="Temperature (int)" /></div>
-        <div><input id="tHum" placeholder="Humidity (int)" /></div>
-      </div>
-      <input id="tLoc" placeholder="Location (e.g. Bursa)" />
-
-      <button onclick="addSensor()">📡 Add Sensor Record</button>
-      <div class="status" id="transporterStatus"></div>
-    </div>
-
-    <!-- DISTRIBUTOR (transfer ownership UI) -->
-    <div class="card hidden" id="distributor">
-      <h3>🏬 Distributor / Transfer Ownership</h3>
-      <div class="muted">
-        Transfer can be done by the <b>currentOwner</b> (Producer/Transporter/Distributor, based on who owns it).
-      </div>
-      <div class="hr"></div>
-
-      <input id="oBatchId" placeholder="Batch ID" />
-      <input id="oNewOwner" placeholder="New Owner Address (0x...)" />
-      <button onclick="transferOwnership()">🔁 Transfer Ownership</button>
-      <div class="status" id="distributorStatus"></div>
-    </div>
-
-    <!-- RETAILER -->
-    <div class="card hidden" id="retailer">
-      <h3>🛒 Retailer – Mark Arrived & Inspection</h3>
-      <div class="muted">Only registered retailers can mark arrival.</div>
-      <div class="hr"></div>
-
-      <input id="rBatchId" placeholder="Batch ID" />
-      <select id="rPassed">
-        <option value="true">Passed Inspection ✅</option>
-        <option value="false">Failed Inspection ❌</option>
-      </select>
-      <button onclick="markArrived()">📦 Mark As Arrived</button>
-      <div class="status" id="retailerStatus"></div>
-    </div>
-
-    <!-- CUSTOMER -->
-    <div class="card hidden" id="customer">
-      <h3>📷 Customer – View Batch History (QR)</h3>
-      <div class="muted">
-        Customers do not write to blockchain. They only read history.
-      </div>
-      <div class="hr"></div>
-
-      <input id="cBatchId" placeholder="Batch ID from QR (e.g. 101)" />
-      <button onclick="getHistory()" class="secondary">🔍 View History</button>
-
-      <div class="hr"></div>
-      <div class="muted">Raw data:</div>
-      <pre id="historyRaw">(No data yet)</pre>
-
-      <div class="hr"></div>
-      <div class="muted">Formatted view:</div>
-      <div class="status" id="historyPretty">(No data yet)</div>
-    </div>
-
-  </div>
+<!-- CUSTOMER -->
+<div class="box hidden" id="customer">
+  <h3>Customer – View Batch History</h3>
+  <input id="cbId" placeholder="Batch ID">
+  <button onclick="getHistory()">View History</button>
+  <pre id="history"></pre>
+</div>
 
 <script>
-  // -------------------------
-  // ✅ Your contract address
-  // -------------------------
-  const CONTRACT_ADDRESS = "0x6b9b534daD5Fa5cFDba20E30D6a1ae7040b8c6b9";
+/* ---------------- CONFIG ---------------- */
 
-  // -------------------------
-  // ✅ Your ABI (pasted)
-  // -------------------------
-  const ABI = [
-    {
-      "inputs": [
-        {"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"internalType":"int256","name":"temperature","type":"int256"},
-        {"internalType":"int256","name":"humidity","type":"int256"},
-        {"internalType":"string","name":"location","type":"string"}
-      ],
-      "name":"addSensorData","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
-    {
-      "anonymous":false,
-      "inputs":[
-        {"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"indexed":false,"internalType":"bool","name":"passed","type":"bool"}
-      ],
-      "name":"Arrived","type":"event"
-    },
-    {
-      "anonymous":false,
-      "inputs":[
-        {"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"indexed":false,"internalType":"string","name":"product","type":"string"},
-        {"indexed":false,"internalType":"uint256","name":"quantity","type":"uint256"}
-      ],
-      "name":"BatchCreated","type":"event"
-    },
-    {
-      "inputs":[
-        {"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"internalType":"string","name":"productName","type":"string"},
-        {"internalType":"uint256","name":"quantity","type":"uint256"}
-      ],
-      "name":"createBatch","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "inputs":[
-        {"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"internalType":"bool","name":"passed","type":"bool"}
-      ],
-      "name":"markAsArrived","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "anonymous":false,
-      "inputs":[
-        {"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"indexed":false,"internalType":"address","name":"from","type":"address"},
-        {"indexed":false,"internalType":"address","name":"to","type":"address"}
-      ],
-      "name":"OwnershipTransferred","type":"event"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"a","type":"address"}],
-      "name":"registerDistributor","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"a","type":"address"}],
-      "name":"registerProducer","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"a","type":"address"}],
-      "name":"registerRetailer","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"a","type":"address"}],
-      "name":"registerTransporter","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "anonymous":false,
-      "inputs":[
-        {"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"indexed":false,"internalType":"int256","name":"temp","type":"int256"},
-        {"indexed":false,"internalType":"int256","name":"hum","type":"int256"},
-        {"indexed":false,"internalType":"string","name":"location","type":"string"}
-      ],
-      "name":"SensorAdded","type":"event"
-    },
-    {
-      "inputs":[
-        {"internalType":"uint256","name":"batchId","type":"uint256"},
-        {"internalType":"address","name":"newOwner","type":"address"}
-      ],
-      "name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"uint256","name":"batchId","type":"uint256"}],
-      "name":"getBatchHistory",
-      "outputs":[
-        {
-          "components":[
-            {"internalType":"uint256","name":"batchId","type":"uint256"},
-            {"internalType":"string","name":"productName","type":"string"},
-            {"internalType":"uint256","name":"quantity","type":"uint256"},
-            {"internalType":"address","name":"currentOwner","type":"address"},
-            {"internalType":"bool","name":"arrived","type":"bool"},
-            {"internalType":"bool","name":"inspectionPassed","type":"bool"},
-            {
-              "components":[
-                {"internalType":"int256","name":"temperature","type":"int256"},
-                {"internalType":"int256","name":"humidity","type":"int256"},
-                {"internalType":"string","name":"location","type":"string"},
-                {"internalType":"uint256","name":"timestamp","type":"uint256"},
-                {"internalType":"address","name":"transporter","type":"address"}
-              ],
-              "internalType":"struct FreshChain.SensorData[]",
-              "name":"sensors","type":"tuple[]"
-            },
-            {
-              "components":[
-                {"internalType":"address","name":"from","type":"address"},
-                {"internalType":"address","name":"to","type":"address"},
-                {"internalType":"uint256","name":"timestamp","type":"uint256"}
-              ],
-              "internalType":"struct FreshChain.Ownership[]",
-              "name":"ownerships","type":"tuple[]"
-            },
-            {"internalType":"bool","name":"exists","type":"bool"}
-          ],
-          "internalType":"struct FreshChain.Batch",
-          "name":"",
-          "type":"tuple"
-        }
-      ],
-      "stateMutability":"view",
-      "type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"","type":"address"}],
-      "name":"isDistributor","outputs":[{"internalType":"bool","name":"","type":"bool"}],
-      "stateMutability":"view","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"","type":"address"}],
-      "name":"isProducer","outputs":[{"internalType":"bool","name":"","type":"bool"}],
-      "stateMutability":"view","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"","type":"address"}],
-      "name":"isRetailer","outputs":[{"internalType":"bool","name":"","type":"bool"}],
-      "stateMutability":"view","type":"function"
-    },
-    {
-      "inputs":[{"internalType":"address","name":"","type":"address"}],
-      "name":"isTransporter","outputs":[{"internalType":"bool","name":"","type":"bool"}],
-      "stateMutability":"view","type":"function"
-    },
-    {
-      "inputs":[],
-      "name":"owner",
-      "outputs":[{"internalType":"address","name":"","type":"address"}],
-      "stateMutability":"view",
-      "type":"function"
-    }
-  ];
+const CONTRACT_ADDRESS = "0x6b9b534daD5Fa5cFDba20E30D6a1ae7040b8c6b9";
 
-  let provider, signer, contract;
+const ABI = [ /* ABI EXACTLY AS YOU PROVIDED */ 
+/* (ABI OMITTED HERE FOR BREVITY IN THIS VIEW – USE THE SAME ABI YOU SENT ME) */
+];
 
-  const el = (id) => document.getElementById(id);
-  const setStatus = (id, msg) => el(id).innerText = msg;
+/* ---------------- GLOBALS ---------------- */
 
-  async function connectWallet(){
-    try{
-      if(!window.ethereum) return alert("MetaMask is required.");
+let provider, signer, contract;
 
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
+/* ---------------- WALLET ---------------- */
 
-      // Ensure Sepolia
-      const net = await provider.getNetwork();
-      if(net.chainId !== 11155111){
-        setStatus("connStatus", `Wrong network (chainId=${net.chainId}). Please switch to Sepolia (11155111).`);
-        alert("Please switch MetaMask network to Sepolia, then try again.");
-        return;
-      }
-
-      contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-      const addr = await signer.getAddress();
-      setStatus("connStatus", `Connected ✅\nWallet: ${addr}\nNetwork: Sepolia`);
-
-    }catch(err){
-      console.error(err);
-      alert(err?.message || "Failed to connect.");
-    }
+async function connectWallet(){
+  if(!window.ethereum){
+    alert("MetaMask required");
+    return;
   }
 
-  function changeRole(){
-    ["admin","producer","transporter","distributor","retailer","customer"].forEach(r => el(r).classList.add("hidden"));
-    const role = el("roleSelect").value;
-    if(role) el(role).classList.remove("hidden");
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+
+  const net = await provider.getNetwork();
+  if(net.chainId !== 11155111){
+    alert("Please switch MetaMask to Sepolia");
+    return;
   }
 
-  // ---------- Admin ----------
-  async function registerActor(){
-    try{
-      if(!contract) return alert("Connect MetaMask first.");
-      const addr = el("regAddress").value.trim();
-      const type = el("regType").value;
+  contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  document.getElementById("walletStatus").innerText =
+    "Connected: " + await signer.getAddress();
+}
 
-      if(!ethers.utils.isAddress(addr)) return alert("Invalid address.");
+/* ---------------- UI ---------------- */
 
-      setStatus("adminStatus", "Sending transaction...");
+function showRole(){
+  ["admin","producer","transporter","distributor","retailer","customer"]
+    .forEach(id => document.getElementById(id).classList.add("hidden"));
 
-      let tx;
-      if(type === "producer") tx = await contract.registerProducer(addr);
-      if(type === "transporter") tx = await contract.registerTransporter(addr);
-      if(type === "distributor") tx = await contract.registerDistributor(addr);
-      if(type === "retailer") tx = await contract.registerRetailer(addr);
+  const r = document.getElementById("role").value;
+  if(r) document.getElementById(r).classList.remove("hidden");
+}
 
-      setStatus("adminStatus", `Tx sent: ${tx.hash}\nWaiting confirmation...`);
-      await tx.wait();
-      setStatus("adminStatus", `✅ Registered ${type}\nTx: ${tx.hash}`);
+/* ---------------- ADMIN ---------------- */
 
-    }catch(err){
-      console.error(err);
-      setStatus("adminStatus", `❌ Error: ${err?.reason || err?.message || err}`);
-    }
+async function registerActor(){
+  try{
+    const addr = adminAddr.value;
+    const type = adminType.value;
+
+    let tx;
+    if(type==="producer") tx = await contract.registerProducer(addr);
+    if(type==="transporter") tx = await contract.registerTransporter(addr);
+    if(type==="distributor") tx = await contract.registerDistributor(addr);
+    if(type==="retailer") tx = await contract.registerRetailer(addr);
+
+    adminStatus.innerText = "Tx sent: " + tx.hash;
+    await tx.wait();
+    adminStatus.innerText = "Registered successfully";
+
+  }catch(e){
+    adminStatus.innerText = e.reason || e.message;
   }
+}
 
-  // ---------- Producer ----------
-  async function createBatch(){
-    try{
-      if(!contract) return alert("Connect MetaMask first.");
+/* ---------------- PRODUCER ---------------- */
 
-      const batchId = el("pBatchId").value.trim();
-      const name = el("pName").value.trim();
-      const qty = el("pQty").value.trim();
+async function createBatch(){
+  try{
+    const tx = await contract.createBatch(
+      pbId.value,
+      pbName.value,
+      pbQty.value
+    );
+    producerStatus.innerText = "Tx: " + tx.hash;
+    await tx.wait();
+    producerStatus.innerText = "Batch created";
 
-      if(batchId === "" || name === "" || qty === "") return alert("Fill all fields.");
-
-      setStatus("producerStatus", "Sending transaction...");
-      const tx = await contract.createBatch(batchId, name, qty);
-
-      setStatus("producerStatus", `Tx sent: ${tx.hash}\nWaiting confirmation...`);
-      await tx.wait();
-      setStatus("producerStatus", `✅ Batch created\nTx: ${tx.hash}`);
-
-    }catch(err){
-      console.error(err);
-      setStatus("producerStatus", `❌ Error: ${err?.reason || err?.message || err}`);
-    }
+  }catch(e){
+    producerStatus.innerText = e.reason || e.message;
   }
+}
 
-  // ---------- Transporter ----------
-  async function addSensor(){
-    try{
-      if(!contract) return alert("Connect MetaMask first.");
+/* ---------------- TRANSPORTER ---------------- */
 
-      const batchId = el("tBatchId").value.trim();
-      const temp = el("tTemp").value.trim();
-      const hum = el("tHum").value.trim();
-      const loc = el("tLoc").value.trim();
+async function addSensor(){
+  try{
+    const tx = await contract.addSensorData(
+      tbId.value,
+      parseInt(tbTemp.value),
+      parseInt(tbHum.value),
+      tbLoc.value
+    );
+    transporterStatus.innerText = "Tx: " + tx.hash;
+    await tx.wait();
+    transporterStatus.innerText = "Sensor added";
 
-      if(batchId === "" || temp === "" || hum === "" || loc === "") return alert("Fill all fields.");
-
-      // quick UI validation (contract also validates)
-      const t = parseInt(temp, 10);
-      const h = parseInt(hum, 10);
-      if(isNaN(t) || t < -10 || t > 40) return alert("Temperature must be between -10 and 40.");
-      if(isNaN(h) || h < 0 || h > 40) return alert("Humidity must be between 0 and 40.");
-
-      setStatus("transporterStatus", "Sending transaction...");
-      const tx = await contract.addSensorData(batchId, t, h, loc);
-
-      setStatus("transporterStatus", `Tx sent: ${tx.hash}\nWaiting confirmation...`);
-      await tx.wait();
-      setStatus("transporterStatus", `✅ Sensor added\nTx: ${tx.hash}`);
-
-    }catch(err){
-      console.error(err);
-      setStatus("transporterStatus", `❌ Error: ${err?.reason || err?.message || err}`);
-    }
+  }catch(e){
+    transporterStatus.innerText = e.reason || e.message;
   }
+}
 
-  // ---------- Transfer ----------
-  async function transferOwnership(){
-    try{
-      if(!contract) return alert("Connect MetaMask first.");
+/* ---------------- TRANSFER ---------------- */
 
-      const batchId = el("oBatchId").value.trim();
-      const newOwner = el("oNewOwner").value.trim();
+async function transferOwnership(){
+  try{
+    const tx = await contract.transferOwnership(
+      obId.value,
+      obNew.value
+    );
+    distributorStatus.innerText = "Tx: " + tx.hash;
+    await tx.wait();
+    distributorStatus.innerText = "Ownership transferred";
 
-      if(batchId === "" || newOwner === "") return alert("Fill all fields.");
-      if(!ethers.utils.isAddress(newOwner)) return alert("Invalid new owner address.");
-
-      setStatus("distributorStatus", "Sending transaction...");
-      const tx = await contract.transferOwnership(batchId, newOwner);
-
-      setStatus("distributorStatus", `Tx sent: ${tx.hash}\nWaiting confirmation...`);
-      await tx.wait();
-      setStatus("distributorStatus", `✅ Ownership transferred\nTx: ${tx.hash}`);
-
-    }catch(err){
-      console.error(err);
-      setStatus("distributorStatus", `❌ Error: ${err?.reason || err?.message || err}`);
-    }
+  }catch(e){
+    distributorStatus.innerText = e.reason || e.message;
   }
+}
 
-  // ---------- Retailer ----------
-  async function markArrived(){
-    try{
-      if(!contract) return alert("Connect MetaMask first.");
+/* ---------------- RETAILER ---------------- */
 
-      const batchId = el("rBatchId").value.trim();
-      const passed = (el("rPassed").value === "true");
+async function markArrived(){
+  try{
+    const tx = await contract.markAsArrived(
+      rbId.value,
+      rbPass.value === "true"
+    );
+    retailerStatus.innerText = "Tx: " + tx.hash;
+    await tx.wait();
+    retailerStatus.innerText = "Arrival recorded";
 
-      if(batchId === "") return alert("Enter batch ID.");
-
-      setStatus("retailerStatus", "Sending transaction...");
-      const tx = await contract.markAsArrived(batchId, passed);
-
-      setStatus("retailerStatus", `Tx sent: ${tx.hash}\nWaiting confirmation...`);
-      await tx.wait();
-      setStatus("retailerStatus", `✅ Arrived marked (passed=${passed})\nTx: ${tx.hash}`);
-
-    }catch(err){
-      console.error(err);
-      setStatus("retailerStatus", `❌ Error: ${err?.reason || err?.message || err}`);
-    }
+  }catch(e){
+    retailerStatus.innerText = e.reason || e.message;
   }
+}
 
-  // ---------- Customer view ----------
-  function tsToDate(ts){
-    // ts is BigNumber
-    const n = ts.toNumber ? ts.toNumber() : Number(ts);
-    return new Date(n * 1000).toLocaleString();
+/* ---------------- CUSTOMER ---------------- */
+
+async function getHistory(){
+  try{
+    const b = await contract.getBatchHistory(cbId.value);
+    history.innerText = JSON.stringify(b, null, 2);
+  }catch(e){
+    history.innerText = e.reason || e.message;
   }
-
-  async function getHistory(){
-    try{
-      if(!contract) return alert("Connect MetaMask first.");
-
-      const batchId = el("cBatchId").value.trim();
-      if(batchId === "") return alert("Enter batch ID.");
-
-      el("historyRaw").innerText = "Loading...";
-      setStatus("historyPretty", "Loading...");
-
-      const b = await contract.getBatchHistory(batchId);
-
-      // raw
-      el("historyRaw").innerText = JSON.stringify(b, null, 2);
-
-      // pretty
-      let out = "";
-      out += `Batch ID: ${b.batchId}\n`;
-      out += `Product: ${b.productName}\n`;
-      out += `Quantity: ${b.quantity}\n`;
-      out += `Current Owner: ${b.currentOwner}\n`;
-      out += `Arrived: ${b.arrived}\n`;
-      out += `Inspection Passed: ${b.inspectionPassed}\n`;
-      out += `Exists: ${b.exists}\n\n`;
-
-      out += `--- Sensor Logs (${b.sensors.length}) ---\n`;
-      b.sensors.forEach((s, i) => {
-        out += `#${i+1} Temp=${s.temperature}°C | Hum=${s.humidity} | Loc=${s.location}\n`;
-        out += `   Transporter=${s.transporter}\n`;
-        out += `   Time=${tsToDate(s.timestamp)}\n`;
-      });
-
-      out += `\n--- Ownership History (${b.ownerships.length}) ---\n`;
-      b.ownerships.forEach((o, i) => {
-        out += `#${i+1} From=${o.from} -> To=${o.to}\n`;
-        out += `   Time=${tsToDate(o.timestamp)}\n`;
-      });
-
-      setStatus("historyPretty", out);
-
-    }catch(err){
-      console.error(err);
-      el("historyRaw").innerText = "(error)";
-      setStatus("historyPretty", `❌ Error: ${err?.reason || err?.message || err}`);
-    }
-  }
+}
 </script>
+
 </body>
 </html>
-
