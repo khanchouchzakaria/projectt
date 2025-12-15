@@ -2,271 +2,154 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FreshChain – Food Traceability</title>
+<title>FreshChain – Product History</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Ethers v5 -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f3f4f6; padding:20px; }
-h1 { text-align:center; }
-.card {
-  background:#fff;
-  max-width:600px;
-  margin:15px auto;
-  padding:15px;
-  border-radius:8px;
-  box-shadow:0 4px 10px rgba(0,0,0,.1);
-}
-input, select, button {
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-}
-button {
-  background:#111827;
-  color:#fff;
-  border:none;
-  cursor:pointer;
-}
-.hidden { display:none; }
-.status {
-  background:#e5e7eb;
-  padding:8px;
-  margin-top:8px;
-  white-space:pre-wrap;
+body {
+  font-family: Arial, sans-serif;
+  margin: 24px;
 }
 pre {
-  background:#111827;
-  color:#e5e7eb;
-  padding:10px;
-  overflow:auto;
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  font-size: 14px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🥬 FreshChain – Blockchain Food Traceability</h1>
-
-<div class="card">
-  <button onclick="connectWallet()">🔗 Connect MetaMask</button>
-  <div class="status" id="walletStatus">Not connected</div>
-
-  <select id="role" onchange="showRole()">
-    <option value="">Select Role</option>
-    <option value="admin">Admin</option>
-    <option value="producer">Producer</option>
-    <option value="transporter">Transporter</option>
-    <option value="distributor">Distributor</option>
-    <option value="retailer">Retailer</option>
-    <option value="customer">Customer</option>
-  </select>
-</div>
-
-<div class="card hidden" id="admin">
-  <h3>Admin – Register Actor</h3>
-  <input id="adminAddr" placeholder="Actor address">
-  <select id="adminType">
-    <option value="producer">Producer</option>
-    <option value="transporter">Transporter</option>
-    <option value="distributor">Distributor</option>
-    <option value="retailer">Retailer</option>
-  </select>
-  <button onclick="registerActor()">Register</button>
-  <div class="status" id="adminStatus"></div>
-</div>
-
-<div class="card hidden" id="producer">
-  <h3>Producer – Create Batch</h3>
-  <input id="pbId" placeholder="Batch ID">
-  <input id="pbName" placeholder="Product Name">
-  <input id="pbQty" placeholder="Quantity">
-  <button onclick="createBatch()">Create Batch</button>
-  <div class="status" id="producerStatus"></div>
-</div>
-
-<div class="card hidden" id="transporter">
-  <h3>Transporter – Add Sensor Data</h3>
-  <input id="tbId" placeholder="Batch ID">
-  <input id="tbTemp" placeholder="Temperature (-10 to 40)">
-  <input id="tbHum" placeholder="Humidity (0 to 40)">
-  <input id="tbLoc" placeholder="Location">
-  <button onclick="addSensor()">Add Sensor</button>
-  <div class="status" id="transporterStatus"></div>
-</div>
-
-<div class="card hidden" id="distributor">
-  <h3>Transfer Ownership</h3>
-  <input id="obId" placeholder="Batch ID">
-  <input id="obNew" placeholder="New Owner Address">
-  <button onclick="transferOwnership()">Transfer</button>
-  <div class="status" id="distributorStatus"></div>
-</div>
-
-<div class="card hidden" id="retailer">
-  <h3>Retailer – Final Inspection</h3>
-  <input id="rbId" placeholder="Batch ID">
-  <select id="rbPass">
-    <option value="true">Passed</option>
-    <option value="false">Failed</option>
-  </select>
-  <button onclick="markArrived()">Mark Arrived</button>
-  <div class="status" id="retailerStatus"></div>
-</div>
-
-<div class="card hidden" id="customer">
-  <h3>Customer – View Batch History</h3>
-  <input id="cbId" placeholder="Batch ID">
-  <button onclick="getHistory()">View History</button>
-  <pre id="history"></pre>
-</div>
+<h2>FreshChain – Product History</h2>
+<pre id="out">Loading history...</pre>
 
 <script>
-/* ================= CONFIG ================= */
+const CONTRACT_ADDRESS = "0x7AeF3CEc79Ad1321e09b8F3263A7f817f459bD87";
+const RPC = "https://eth-sepolia.g.alchemy.com/v2/7nq9DSo1P4TvLc7p9bOfr";
 
-const CONTRACT_ADDRESS = "0x6b9b534daD5Fa5cFDba20E30D6a1ae7040b8c6b9";
+const ABI = [
+  {
+    "inputs":[{"internalType":"uint256","name":"batchId","type":"uint256"}],
+    "name":"getBatchHistory",
+    "outputs":[
+      {
+        "components":[
+          {"internalType":"uint256","name":"batchId","type":"uint256"},
+          {"internalType":"string","name":"productName","type":"string"},
+          {"internalType":"uint256","name":"quantity","type":"uint256"},
+          {"internalType":"address","name":"currentOwner","type":"address"},
+          {"internalType":"bool","name":"arrived","type":"bool"},
+          {"internalType":"bool","name":"inspectionPassed","type":"bool"},
+          {
+            "components":[
+              {"internalType":"int256","name":"temperature","type":"int256"},
+              {"internalType":"int256","name":"humidity","type":"int256"},
+              {"internalType":"string","name":"location","type":"string"},
+              {"internalType":"uint256","name":"timestamp","type":"uint256"},
+              {"internalType":"address","name":"transporter","type":"address"}
+            ],
+            "internalType":"struct FreshChain.SensorData[]",
+            "name":"sensors",
+            "type":"tuple[]"
+          },
+          {
+            "components":[
+              {"internalType":"address","name":"from","type":"address"},
+              {"internalType":"address","name":"to","type":"address"},
+              {"internalType":"uint256","name":"timestamp","type":"uint256"}
+            ],
+            "internalType":"struct FreshChain.Ownership[]",
+            "name":"ownerships",
+            "type":"tuple[]"
+          },
+          {"internalType":"bool","name":"exists","type":"bool"}
+        ],
+        "internalType":"struct FreshChain.Batch",
+        "name":"",
+        "type":"tuple"
+      }
+    ],
+    "stateMutability":"view",
+    "type":"function"
+  }
+];
 
-const ABI = [/* FULL ABI EXACTLY AS YOU PROVIDED — PASTE IT HERE AGAIN */];
+const out = document.getElementById("out");
+const batchId = new URLSearchParams(window.location.search).get("batchId");
 
-/* ================= GLOBALS ================= */
+if (!batchId) {
+  out.innerText = "❌ No batch ID provided in URL (?batchId=1)";
+  throw new Error("Missing batchId");
+}
 
-let provider;
-let signer;
-let contract;
-
-/* ================= CONNECT ================= */
-
-async function connectWallet() {
+(async () => {
   try {
-    if (typeof window.ethereum === "undefined") {
-      alert("MetaMask is not installed");
+    const provider = new ethers.providers.JsonRpcProvider(RPC);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+    const b = await contract.getBatchHistory(batchId);
+
+    if (!b.exists) {
+      out.innerText = "❌ Batch does not exist.";
       return;
     }
 
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts"
-    });
+    let text = `
+Batch ID: ${b.batchId}
+Product: ${b.productName}
+Quantity: ${b.quantity}
 
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
+Current Owner: ${b.currentOwner}
+Arrived: ${b.arrived}
+Inspection Passed: ${b.inspectionPassed}
 
-    const network = await provider.getNetwork();
-    if (network.chainId !== 11155111) {
-      alert("Please switch MetaMask to Sepolia");
-      return;
+--- SENSOR LOGS ---
+`;
+
+    if (b.sensors.length === 0) {
+      text += "No sensor data recorded.\n";
+    } else {
+      b.sensors.forEach((s, i) => {
+        text += `
+#${i + 1}
+Temperature: ${s.temperature} °C
+Humidity: ${s.humidity} %
+Location: ${s.location}
+Time: ${new Date(s.timestamp * 1000).toLocaleString()}
+Transporter: ${s.transporter}
+`;
+      });
     }
 
-    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    text += "\n--- OWNERSHIP HISTORY ---\n";
 
-    document.getElementById("walletStatus").innerText =
-      "Connected ✅\n" + accounts[0] + "\nNetwork: Sepolia";
+    if (b.ownerships.length === 0) {
+      text += "No ownership transfers recorded.\n";
+    } else {
+      b.ownerships.forEach((o, i) => {
+        text += `
+#${i + 1}
+From: ${o.from}
+To: ${o.to}
+Time: ${new Date(o.timestamp * 1000).toLocaleString()}
+`;
+      });
+    }
 
-  } catch (err) {
-    console.error(err);
-    alert("Connection failed: " + err.message);
-  }
-}
-
-/* ================= UI ================= */
-
-function showRole() {
-  ["admin","producer","transporter","distributor","retailer","customer"]
-    .forEach(r => document.getElementById(r).classList.add("hidden"));
-
-  const role = document.getElementById("role").value;
-  if (role) document.getElementById(role).classList.remove("hidden");
-}
-
-/* ================= ADMIN ================= */
-
-async function registerActor() {
-  try {
-    let tx;
-    const addr = adminAddr.value;
-    const type = adminType.value;
-
-    if (type === "producer") tx = await contract.registerProducer(addr);
-    if (type === "transporter") tx = await contract.registerTransporter(addr);
-    if (type === "distributor") tx = await contract.registerDistributor(addr);
-    if (type === "retailer") tx = await contract.registerRetailer(addr);
-
-    adminStatus.innerText = "Tx: " + tx.hash;
-    await tx.wait();
-    adminStatus.innerText = "Registered successfully";
+    out.innerText = text;
 
   } catch (e) {
-    adminStatus.innerText = e.reason || e.message;
+    console.error(e);
+    out.innerText =
+      "❌ Error loading history.\n" +
+      (e.reason || e.message || e);
   }
-}
-
-/* ================= PRODUCER ================= */
-
-async function createBatch() {
-  try {
-    const tx = await contract.createBatch(pbId.value, pbName.value, pbQty.value);
-    producerStatus.innerText = "Tx: " + tx.hash;
-    await tx.wait();
-    producerStatus.innerText = "Batch created";
-  } catch (e) {
-    producerStatus.innerText = e.reason || e.message;
-  }
-}
-
-/* ================= TRANSPORTER ================= */
-
-async function addSensor() {
-  try {
-    const tx = await contract.addSensorData(
-      tbId.value,
-      parseInt(tbTemp.value),
-      parseInt(tbHum.value),
-      tbLoc.value
-    );
-    transporterStatus.innerText = "Tx: " + tx.hash;
-    await tx.wait();
-    transporterStatus.innerText = "Sensor added";
-  } catch (e) {
-    transporterStatus.innerText = e.reason || e.message;
-  }
-}
-
-/* ================= TRANSFER ================= */
-
-async function transferOwnership() {
-  try {
-    const tx = await contract.transferOwnership(obId.value, obNew.value);
-    distributorStatus.innerText = "Tx: " + tx.hash;
-    await tx.wait();
-    distributorStatus.innerText = "Ownership transferred";
-  } catch (e) {
-    distributorStatus.innerText = e.reason || e.message;
-  }
-}
-
-/* ================= RETAILER ================= */
-
-async function markArrived() {
-  try {
-    const tx = await contract.markAsArrived(rbId.value, rbPass.value === "true");
-    retailerStatus.innerText = "Tx: " + tx.hash;
-    await tx.wait();
-    retailerStatus.innerText = "Arrival recorded";
-  } catch (e) {
-    retailerStatus.innerText = e.reason || e.message;
-  }
-}
-
-/* ================= CUSTOMER ================= */
-
-async function getHistory() {
-  try {
-    const data = await contract.getBatchHistory(cbId.value);
-    history.innerText = JSON.stringify(data, null, 2);
-  } catch (e) {
-    history.innerText = e.reason || e.message;
-  }
-}
+})();
 </script>
 
 </body>
