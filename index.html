@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FreshChain - Sepolia UI</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 1100px; }
+    h1 { margin-bottom: 6px; }
+    .muted { color: #555; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; flex: 1; min-width: 280px; }
+    label { display:block; margin: 10px 0 6px; font-weight: 600; }
+    input, select, button { width: 100%; padding: 10px; border:1px solid #ccc; border-radius: 8px; }
+    button { cursor:pointer; font-weight:700; }
+    button:disabled { opacity: 0.6; cursor:not-allowed; }
+    .btnRow { display:flex; gap:10px; flex-wrap:wrap; }
+    .btnRow button { width:auto; padding: 10px 14px; }
+    .status { padding: 10px; border-radius: 8px; margin-top: 10px; }
+    .ok { background:#e9fff0; border:1px solid #bde5c6; }
+    .err { background:#ffecec; border:1px solid #f5b5b5; }
+    table { width:100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border:1px solid #ddd; padding: 8px; text-align:left; font-size: 14px; }
+    th { background:#f7f7f7; }
+    code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
+    .pill { display:inline-block; padding:4px 10px; border:1px solid #ddd; border-radius:999px; font-size: 12px; margin-left: 6px;}
+  </style>
+</head>
+<body>
+  <h1>FreshChain <span class="pill">Sepolia</span></h1>
+  <div class="muted">Blockchain-Based Food Traceability & Quality Verification</div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="btnRow">
+      <button id="btnConnect">Connect MetaMask</button>
+      <button id="btnDisconnect" disabled>Disconnect</button>
+      <button id="btnRefresh" disabled>Refresh</button>
+    </div>
+
+    <div id="walletInfo" class="muted" style="margin-top:10px;">
+      Wallet: <code id="walletAddr">Not connected</code><br/>
+      Network: <code id="netName">-</code> | ChainId: <code id="chainId">-</code><br/>
+      Contract: <code id="contractAddr"></code>
+    </div>
+
+    <label style="margin-top:12px;">Select Role</label>
+    <select id="roleSelect" disabled>
+      <option value="customer">Customer</option>
+      <option value="admin">Admin</option>
+      <option value="producer">Producer</option>
+      <option value="transporter">Transporter</option>
+      <option value="distributor">Distributor</option>
+      <option value="retailer">Retailer</option>
+    </select>
+
+    <div id="globalStatus"></div>
+  </div>
+
+  <div class="row" style="margin-top:16px;">
+    <!-- ADMIN -->
+    <div class="card" id="panelAdmin" style="display:none;">
+      <h3>Admin Panel</h3>
+      <div class="muted">Register actors (only contract owner can do this).</div>
+
+      <label>Producer Address</label>
+      <input id="adminProducerAddr" placeholder="0x..." />
+      <button id="btnRegProducer">Register Producer</button>
+
+      <label style="margin-top:14px;">Transporter Address</label>
+      <input id="adminTransporterAddr" placeholder="0x..." />
+      <button id="btnRegTransporter">Register Transporter</button>
+
+      <label style="margin-top:14px;">Distributor Address</label>
+      <input id="adminDistributorAddr" placeholder="0x..." />
+      <button id="btnRegDistributor">Register Distributor</button>
+
+      <label style="margin-top:14px;">Retailer Address</label>
+      <input id="adminRetailerAddr" placeholder="0x..." />
+      <button id="btnRegRetailer">Register Retailer</button>
+
+      <div id="adminStatus"></div>
+    </div>
+
+    <!-- PRODUCER -->
+    <div class="card" id="panelProducer" style="display:none;">
+      <h3>Producer Panel</h3>
+      <div class="muted">Create a new batch (only registered Producer).</div>
+
+      <label>Batch ID</label>
+      <input id="prodBatchId" type="number" placeholder="e.g., 101" />
+
+      <label>Product Name</label>
+      <input id="prodName" placeholder="e.g., Tomatoes" />
+
+      <label>Quantity</label>
+      <input id="prodQty" type="number" placeholder="e.g., 100" />
+
+      <button id="btnCreateBatch">Create Batch</button>
+      <div id="producerStatus"></div>
+    </div>
+
+    <!-- TRANSPORTER -->
+    <div class="card" id="panelTransporter" style="display:none;">
+      <h3>Transporter Panel</h3>
+      <div class="muted">Add temperature/humidity logs (temp -10..40, humidity 0..40).</div>
+
+      <label>Batch ID</label>
+      <input id="tBatchId" type="number" placeholder="e.g., 101" />
+
+      <label>Temperature (°C)</label>
+      <input id="tTemp" type="number" placeholder="e.g., 4" />
+
+      <label>Humidity</label>
+      <input id="tHum" type="number" placeholder="e.g., 20" />
+
+      <label>Location</label>
+      <input id="tLoc" placeholder="e.g., Bursa" />
+
+      <button id="btnAddSensor">Add Sensor Data</button>
+      <div id="transporterStatus"></div>
+    </div>
+
+    <!-- DISTRIBUTOR -->
+    <div class="card" id="panelDistributor" style="display:none;">
+      <h3>Distributor Panel</h3>
+      <div class="muted">Distributor receives ownership via transfer. Use the transfer panel below.</div>
+    </div>
+
+    <!-- RETAILER -->
+    <div class="card" id="panelRetailer" style="display:none;">
+      <h3>Retailer Panel</h3>
+      <div class="muted">Mark batch as arrived + inspection result (only registered Retailer).</div>
+
+      <label>Batch ID</label>
+      <input id="rBatchId" type="number" placeholder="e.g., 101" />
+
+      <label>Passed Inspection?</label>
+      <select id="rPassed">
+        <option value="true">true (Passed)</option>
+        <option value="false">false (Failed)</option>
+      </select>
+
+      <button id="btnMarkArrived">Mark As Arrived</button>
+      <div id="retailerStatus"></div>
+    </div>
+
+    <!-- TRANSFER OWNERSHIP -->
+    <div class="card" id="panelTransfer" style="display:block;">
+      <h3>Transfer Ownership</h3>
+      <div class="muted">Only the <b>currentOwner</b> can transfer ownership (per your contract).</div>
+
+      <label>Batch ID</label>
+      <input id="xBatchId" type="number" placeholder="e.g., 101" />
+
+      <label>New Owner Address</label>
+      <input id="xNewOwner" placeholder="0x..." />
+
+      <button id="btnTransfer">Transfer Ownership</button>
+      <div id="transferStatus"></div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:16px;">
+    <!-- CUSTOMER VIEW -->
+    <div class="card" style="flex: 2;">
+      <h3>Customer View (History)</h3>
+      <div class="muted">Enter Batch ID, or open: <code>?batchId=101</code></div>
+
+      <label>Batch ID</label>
+      <input id="cBatchId" type="number" placeholder="e.g., 101" />
+
+      <div class="btnRow" style="margin-top:10px;">
+        <button id="btnLoadHistory">Load History</button>
+        <button id="btnLoadFromUrl">Load from URL</button>
+      </div>
+
+      <div id="historyStatus"></div>
+      <div id="historyResult"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+  <script>
+    // ========= CONFIG =========
+    const CONTRACT_ADDRESS = "0x6b9b534daD5Fa5cFDba20E30D6a1ae7040b8c6b9";
+
+    const ABI = [
+      {
+        "inputs": [{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"int256","name":"temperature","type":"int256"},{"internalType":"int256","name":"humidity","type":"int256"},{"internalType":"string","name":"location","type":"string"}],
+        "name":"addSensorData","outputs":[],"stateMutability":"nonpayable","type":"function"
+      },
+      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"passed","type":"bool"}],"name":"Arrived","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},{"indexed":false,"internalType":"string","name":"product","type":"string"},{"indexed":false,"internalType":"uint256","name":"quantity","type":"uint256"}],"name":"BatchCreated","type":"event"},
+      {"inputs":[{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"string","name":"productName","type":"string"},{"internalType":"uint256","name":"quantity","type":"uint256"}],"name":"createBatch","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"bool","name":"passed","type":"bool"}],"name":"markAsArrived","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},{"indexed":false,"internalType":"address","name":"from","type":"address"},{"indexed":false,"internalType":"address","name":"to","type":"address"}],"name":"OwnershipTransferred","type":"event"},
+      {"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"registerDistributor","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"registerProducer","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"registerRetailer","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"registerTransporter","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"batchId","type":"uint256"},{"indexed":false,"internalType":"int256","name":"temp","type":"int256"},{"indexed":false,"internalType":"int256","name":"hum","type":"int256"},{"indexed":false,"internalType":"string","name":"location","type":"string"}],"name":"SensorAdded","type":"event"},
+      {"inputs":[{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {
+        "inputs":[{"internalType":"uint256","name":"batchId","type":"uint256"}],
+        "name":"getBatchHistory",
+        "outputs":[{"components":[{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"string","name":"productName","type":"string"},{"internalType":"uint256","name":"quantity","type":"uint256"},{"internalType":"address","name":"currentOwner","type":"address"},{"internalType":"bool","name":"arrived","type":"bool"},{"internalType":"bool","name":"inspectionPassed","type":"bool"},
+          {"components":[{"internalType":"int256","name":"temperature","type":"int256"},{"internalType":"int256","name":"humidity","type":"int256"},{"internalType":"string","name":"location","type":"string"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"address","name":"transporter","type":"address"}],"internalType":"struct FreshChain.SensorData[]","name":"sensors","type":"tuple[]"},
+          {"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"internalType":"struct FreshChain.Ownership[]","name":"ownerships","type":"tuple[]"},
+          {"internalType":"bool","name":"exists","type":"bool"}],
+          "internalType":"struct FreshChain.Batch","name":"","type":"tuple"}],
+        "stateMutability":"view","type":"function"
+      },
+      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isDistributor","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isProducer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isRetailer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isTransporter","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}
+    ];
+
+    // ========= App State =========
+    let provider, signer, contract, account;
+
+    const el = (id) => document.getElementById(id);
+
+    function setStatus(targetId, type, msg) {
+      const box = el(targetId);
+      box.innerHTML = msg ? `<div class="status ${type}">${msg}</div>` : "";
+    }
+
+    function friendlyError(e) {
+      const msg = e?.data?.message || e?.error?.message || e?.message || String(e);
+      return msg.replace("execution reverted: ", "");
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function requireConnected() {
+      if (!provider || !signer || !contract || !account) {
+        throw new Error("Wallet not connected. Click 'Connect MetaMask' first.");
+      }
+    }
+
+    async function refreshNetworkInfo() {
+      const net = await provider.getNetwork();
+      el("netName").textContent = net.name || "unknown";
+      el("chainId").textContent = String(net.chainId);
+
+      if (net.chainId !== 11155111) {
+        setStatus("globalStatus", "err", "You are NOT on Sepolia. Switch MetaMask to Sepolia (chainId 11155111).");
+      } else {
+        setStatus("globalStatus", "ok",
