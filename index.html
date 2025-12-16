@@ -28,6 +28,16 @@ button {
   margin-top: 6px;
   cursor: pointer;
 }
+.status {
+  margin-top: 6px;
+  font-size: 14px;
+}
+.success {
+  color: green;
+}
+.error {
+  color: red;
+}
 small {
   color: #666;
 }
@@ -44,25 +54,27 @@ small {
   <p><b>Connected Account:</b> <span id="account">-</span></p>
 </div>
 
-<!-- ADMIN PANEL -->
+<!-- ADMIN -->
 <div class="card">
   <h3>Admin Panel (Owner Only)</h3>
 
-  <input id="producerAddr" placeholder="Producer address (0x...)">
+  <input id="producerAddr" placeholder="Producer address">
   <button onclick="registerProducer()">Register Producer</button>
+  <div id="producerStatus" class="status"></div>
 
-  <input id="transporterAddr" placeholder="Transporter address (0x...)">
+  <input id="transporterAddr" placeholder="Transporter address">
   <button onclick="registerTransporter()">Register Transporter</button>
+  <div id="transporterStatus" class="status"></div>
 
-  <input id="distributorAddr" placeholder="Distributor address (0x...)">
+  <input id="distributorAddr" placeholder="Distributor address">
   <button onclick="registerDistributor()">Register Distributor</button>
+  <div id="distributorStatus" class="status"></div>
 
-  <input id="retailerAddr" placeholder="Retailer address (0x...)">
+  <input id="retailerAddr" placeholder="Retailer address">
   <button onclick="registerRetailer()">Register Retailer</button>
+  <div id="retailerStatus" class="status"></div>
 
-  <small>
-    ⚠️ MetaMask must be connected with the <b>OWNER (deployer)</b> wallet
-  </small>
+  <small>⚠️ MetaMask must be connected with the OWNER (deployer)</small>
 </div>
 
 <!-- PRODUCER -->
@@ -72,6 +84,7 @@ small {
   <input id="pname" placeholder="Product name">
   <input id="qty" placeholder="Quantity">
   <button onclick="createBatch()">Create Batch</button>
+  <div id="batchStatus" class="status"></div>
 </div>
 
 <!-- TRANSPORTER -->
@@ -82,6 +95,7 @@ small {
   <input id="hum" placeholder="Humidity">
   <input id="loc" placeholder="Location">
   <button onclick="addSensor()">Add Sensor Data</button>
+  <div id="sensorStatus" class="status"></div>
 </div>
 
 <!-- DISTRIBUTOR -->
@@ -90,6 +104,7 @@ small {
   <input id="tid" placeholder="Batch ID">
   <input id="newOwner" placeholder="New owner address">
   <button onclick="transferOwner()">Transfer Ownership</button>
+  <div id="transferStatus" class="status"></div>
 </div>
 
 <!-- RETAILER -->
@@ -98,6 +113,7 @@ small {
   <input id="rid" placeholder="Batch ID">
   <button onclick="markArrived(true)">Passed</button>
   <button onclick="markArrived(false)">Failed</button>
+  <div id="arrivalStatus" class="status"></div>
 </div>
 
 <!-- QR -->
@@ -131,10 +147,6 @@ let provider, signer, contract;
 /* ================= CONNECT ================= */
 
 async function connect() {
-  if (!window.ethereum) {
-    alert("MetaMask not detected");
-    return;
-  }
   provider = new ethers.providers.Web3Provider(window.ethereum);
   await provider.send("eth_requestAccounts", []);
   signer = provider.getSigner();
@@ -142,60 +154,94 @@ async function connect() {
   account.innerText = await signer.getAddress();
 }
 
+/* ================= STATUS HELPER ================= */
+
+function setStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.innerText = msg;
+  el.className = "status " + type;
+}
+
 /* ================= ADMIN ================= */
 
 async function registerProducer() {
-  await sendTx(() => contract.registerProducer(producerAddr.value));
+  sendTx(
+    () => contract.registerProducer(producerAddr.value),
+    "producerStatus",
+    "Producer registered"
+  );
 }
 
 async function registerTransporter() {
-  await sendTx(() => contract.registerTransporter(transporterAddr.value));
+  sendTx(
+    () => contract.registerTransporter(transporterAddr.value),
+    "transporterStatus",
+    "Transporter registered"
+  );
 }
 
 async function registerDistributor() {
-  await sendTx(() => contract.registerDistributor(distributorAddr.value));
+  sendTx(
+    () => contract.registerDistributor(distributorAddr.value),
+    "distributorStatus",
+    "Distributor registered"
+  );
 }
 
 async function registerRetailer() {
-  await sendTx(() => contract.registerRetailer(retailerAddr.value));
+  sendTx(
+    () => contract.registerRetailer(retailerAddr.value),
+    "retailerStatus",
+    "Retailer registered"
+  );
 }
 
 /* ================= ROLES ================= */
 
 async function createBatch() {
-  await sendTx(() => contract.createBatch(bid.value, pname.value, qty.value));
+  sendTx(
+    () => contract.createBatch(bid.value, pname.value, qty.value),
+    "batchStatus",
+    "Batch created"
+  );
 }
 
 async function addSensor() {
-  await sendTx(() =>
-    contract.addSensorData(sid.value, temp.value, hum.value, loc.value)
+  sendTx(
+    () => contract.addSensorData(sid.value, temp.value, hum.value, loc.value),
+    "sensorStatus",
+    "Sensor data added"
   );
 }
 
 async function transferOwner() {
-  await sendTx(() =>
-    contract.transferOwnership(tid.value, newOwner.value)
+  sendTx(
+    () => contract.transferOwnership(tid.value, newOwner.value),
+    "transferStatus",
+    "Ownership transferred"
   );
 }
 
 async function markArrived(passed) {
-  await sendTx(() =>
-    contract.markAsArrived(rid.value, passed)
+  sendTx(
+    () => contract.markAsArrived(rid.value, passed),
+    "arrivalStatus",
+    passed ? "Inspection passed" : "Inspection failed"
   );
 }
 
-/* ================= HELPERS ================= */
+/* ================= TX HANDLER ================= */
 
-async function sendTx(fn) {
+async function sendTx(fn, statusId, successMsg) {
   try {
     const tx = await fn();
     await tx.wait();
-    alert("✅ Transaction successful");
+    setStatus(statusId, "✅ " + successMsg, "success");
   } catch (e) {
-    alert(
-      e?.reason ||
-      e?.error?.message ||
-      "❌ Transaction failed (check role / owner)"
+    setStatus(
+      statusId,
+      "❌ " + (e.reason || "Transaction failed"),
+      "error"
     );
   }
 }
