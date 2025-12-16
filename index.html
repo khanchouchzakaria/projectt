@@ -2,16 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FreshChain – Management</title>
+<title>FreshChain – Management Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-body { font-family: Arial; margin: 24px; }
-.card { border:1px solid #ccc; padding:16px; border-radius:10px; margin-bottom:16px; }
-input, button { padding:8px; margin:4px; }
-button { cursor:pointer; }
-pre { background:#f5f5f5; padding:10px; }
+body {
+  font-family: Arial, sans-serif;
+  margin: 24px;
+}
+.card {
+  border: 1px solid #ccc;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+input {
+  padding: 8px;
+  margin: 6px 0;
+  width: 100%;
+}
+button {
+  padding: 8px 14px;
+  margin-top: 6px;
+  cursor: pointer;
+}
+small {
+  color: #666;
+}
 </style>
 </head>
 
@@ -19,21 +38,34 @@ pre { background:#f5f5f5; padding:10px; }
 
 <h2>FreshChain – Management Panel</h2>
 
+<!-- CONNECT -->
 <div class="card">
   <button onclick="connect()">Connect MetaMask</button>
-  <p><b>Account:</b> <span id="account">-</span></p>
+  <p><b>Connected Account:</b> <span id="account">-</span></p>
 </div>
 
+<!-- ADMIN PANEL -->
 <div class="card">
-  <h3>Admin – Register Roles</h3>
-  <input id="roleAddr" placeholder="0x address">
-  <br>
-  <button onclick="register('registerProducer')">Producer</button>
-  <button onclick="register('registerTransporter')">Transporter</button>
-  <button onclick="register('registerDistributor')">Distributor</button>
-  <button onclick="register('registerRetailer')">Retailer</button>
+  <h3>Admin Panel (Owner Only)</h3>
+
+  <input id="producerAddr" placeholder="Producer address (0x...)">
+  <button onclick="registerProducer()">Register Producer</button>
+
+  <input id="transporterAddr" placeholder="Transporter address (0x...)">
+  <button onclick="registerTransporter()">Register Transporter</button>
+
+  <input id="distributorAddr" placeholder="Distributor address (0x...)">
+  <button onclick="registerDistributor()">Register Distributor</button>
+
+  <input id="retailerAddr" placeholder="Retailer address (0x...)">
+  <button onclick="registerRetailer()">Register Retailer</button>
+
+  <small>
+    ⚠️ MetaMask must be connected with the <b>OWNER (deployer)</b> wallet
+  </small>
 </div>
 
+<!-- PRODUCER -->
 <div class="card">
   <h3>Producer – Create Batch</h3>
   <input id="bid" placeholder="Batch ID">
@@ -42,22 +74,25 @@ pre { background:#f5f5f5; padding:10px; }
   <button onclick="createBatch()">Create Batch</button>
 </div>
 
+<!-- TRANSPORTER -->
 <div class="card">
   <h3>Transporter – Add Sensor Data</h3>
   <input id="sid" placeholder="Batch ID">
   <input id="temp" placeholder="Temperature">
   <input id="hum" placeholder="Humidity">
   <input id="loc" placeholder="Location">
-  <button onclick="addSensor()">Add Sensor</button>
+  <button onclick="addSensor()">Add Sensor Data</button>
 </div>
 
+<!-- DISTRIBUTOR -->
 <div class="card">
   <h3>Distributor – Transfer Ownership</h3>
   <input id="tid" placeholder="Batch ID">
   <input id="newOwner" placeholder="New owner address">
-  <button onclick="transferOwner()">Transfer</button>
+  <button onclick="transferOwner()">Transfer Ownership</button>
 </div>
 
+<!-- RETAILER -->
 <div class="card">
   <h3>Retailer – Mark As Arrived</h3>
   <input id="rid" placeholder="Batch ID">
@@ -65,6 +100,7 @@ pre { background:#f5f5f5; padding:10px; }
   <button onclick="markArrived(false)">Failed</button>
 </div>
 
+<!-- QR -->
 <div class="card">
   <h3>Customer – Generate QR</h3>
   <input id="qrid" placeholder="Batch ID">
@@ -75,74 +111,101 @@ pre { background:#f5f5f5; padding:10px; }
 </div>
 
 <script>
-/* ✅ YOUR CONTRACT ADDRESS */
+/* ================= CONFIG ================= */
+
 const CONTRACT_ADDRESS = "0x4775403267e2665DEF8B4Db9d33250E785bF979C";
 
-/* ✅ YOUR REAL ABI */
 const ABI = [
-  "function addSensorData(uint256,int256,int256,string)",
-  "function createBatch(uint256,string,uint256)",
-  "function markAsArrived(uint256,bool)",
-  "function registerDistributor(address)",
   "function registerProducer(address)",
-  "function registerRetailer(address)",
   "function registerTransporter(address)",
-  "function transferOwnership(uint256,address)"
+  "function registerDistributor(address)",
+  "function registerRetailer(address)",
+  "function createBatch(uint256,string,uint256)",
+  "function addSensorData(uint256,int256,int256,string)",
+  "function transferOwnership(uint256,address)",
+  "function markAsArrived(uint256,bool)"
 ];
 
-let signer, contract;
+let provider, signer, contract;
 
-async function connect(){
+/* ================= CONNECT ================= */
+
+async function connect() {
   if (!window.ethereum) {
     alert("MetaMask not detected");
     return;
   }
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts",[]);
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
   signer = provider.getSigner();
   contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
   account.innerText = await signer.getAddress();
 }
 
-async function register(fn){
-  const tx = await contract[fn](roleAddr.value);
-  await tx.wait();
-  alert("Role registered");
+/* ================= ADMIN ================= */
+
+async function registerProducer() {
+  await sendTx(() => contract.registerProducer(producerAddr.value));
 }
 
-async function createBatch(){
-  const tx = await contract.createBatch(bid.value, pname.value, qty.value);
-  await tx.wait();
-  alert("Batch created");
+async function registerTransporter() {
+  await sendTx(() => contract.registerTransporter(transporterAddr.value));
 }
 
-async function addSensor(){
-  const tx = await contract.addSensorData(
-    sid.value,
-    temp.value,
-    hum.value,
-    loc.value
+async function registerDistributor() {
+  await sendTx(() => contract.registerDistributor(distributorAddr.value));
+}
+
+async function registerRetailer() {
+  await sendTx(() => contract.registerRetailer(retailerAddr.value));
+}
+
+/* ================= ROLES ================= */
+
+async function createBatch() {
+  await sendTx(() => contract.createBatch(bid.value, pname.value, qty.value));
+}
+
+async function addSensor() {
+  await sendTx(() =>
+    contract.addSensorData(sid.value, temp.value, hum.value, loc.value)
   );
-  await tx.wait();
-  alert("Sensor data added");
 }
 
-async function transferOwner(){
-  const tx = await contract.transferOwnership(tid.value, newOwner.value);
-  await tx.wait();
-  alert("Ownership transferred");
+async function transferOwner() {
+  await sendTx(() =>
+    contract.transferOwnership(tid.value, newOwner.value)
+  );
 }
 
-async function markArrived(passed){
-  const tx = await contract.markAsArrived(rid.value, passed);
-  await tx.wait();
-  alert("Marked arrived");
+async function markArrived(passed) {
+  await sendTx(() =>
+    contract.markAsArrived(rid.value, passed)
+  );
 }
 
-function generateQR(){
+/* ================= HELPERS ================= */
+
+async function sendTx(fn) {
+  try {
+    const tx = await fn();
+    await tx.wait();
+    alert("✅ Transaction successful");
+  } catch (e) {
+    alert(
+      e?.reason ||
+      e?.error?.message ||
+      "❌ Transaction failed (check role / owner)"
+    );
+  }
+}
+
+/* ================= QR ================= */
+
+function generateQR() {
   const url =
     location.origin +
-    location.pathname.replace("index.html","") +
+    location.pathname.replace("index.html", "") +
     "scan.html?batchId=" + qrid.value;
 
   qrimg.src =
